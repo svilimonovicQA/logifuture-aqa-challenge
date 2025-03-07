@@ -1,0 +1,28 @@
+{
+  "name": "logifuture-aqa-challenge",
+  "version": "1.0.0",
+  "description": "Logifuture AQA Challenge - Backend testing",
+  "keywords": [
+    "logifuture",
+    "challenge",
+    "backend",
+    "api",
+    "testing",
+    "cypress"
+  ],
+  "homepage": "https://github.com/svilimonovicQA/logifuture-aqa-challenge#readme",
+  "bugs": {
+    "url": "https://github.com/svilimonovicQA/logifuture-aqa-challenge/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svilimonovicQA/logifuture-aqa-challenge.git"
+  },
+  "license": "ISC",
+  "author": "Stefan Vilimonovic",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
