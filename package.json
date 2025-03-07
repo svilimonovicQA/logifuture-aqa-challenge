@@ -27,6 +27,6 @@
   },
   "devDependencies": {
     "cypress": "^14.1.0",
-    "msw": "^2.7.3"
+    "typescript": "^5.8.2"
   }
 }
