@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-import { faker } from "@faker-js/faker";
+const { faker } = require("@faker-js/faker");
 
 router.post("/login", (request, response) => {
   // Check for X-Service-Id header
