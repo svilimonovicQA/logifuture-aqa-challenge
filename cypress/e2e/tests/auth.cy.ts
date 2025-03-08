@@ -6,9 +6,10 @@ describe("Login API tests", () => {
       expect(response.body.data).to.have.property("token");
       expect(response.body.data.token).to.be.a("string");
       expect(response.body.data.token).to.match(/^eyJ/); // JWT tokens typically start with 'eyJ'
-      expect(response.body.data).to.have.property("refreshToken");
-      expect(response.body.data).to.have.property("expiry");
-      expect(response.body.data).to.have.property("userId");
+      expect(response.body.data).to.have.property("refreshToken").and.not.be
+        .empty;
+      expect(response.body.data).to.have.property("expiry").and.not.be.empty;
+      expect(response.body.data).to.have.property("userId").and.not.be.empty;
     });
   });
 

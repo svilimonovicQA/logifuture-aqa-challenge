@@ -14,6 +14,14 @@ declare global {
         password: string,
         serviceId: string
       ): Chainable;
+
+      /**
+       * Get User Information
+       * @param {string} userId - The ID of the user to get information for.
+       * @param {string} authToken - The authentication token to use for the request.
+       * @example cy.getUserInfo("userId", "authToken", "serviceId");
+       */
+      getUserInfo(userId: string, authToken: string): Chainable;
     }
   }
 }

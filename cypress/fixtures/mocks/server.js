@@ -1,9 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
+const userInfoRoutes = require("./routes/userInfo");
 /**
- * Routes related to login operations.
- * @module routes/auth
+ * Express server setup with routes for authentication and user operations.
+ * @module server
+ * @requires routes/auth - Routes related to login operations
+ * @requires routes/userInfo - Routes related to user information operations
  */
 const app = express();
 
@@ -13,5 +16,6 @@ app.use(express.json());
 
 // Routes
 app.use("/user", authRoutes);
+app.use("/user/info", userInfoRoutes);
 
 module.exports = app;

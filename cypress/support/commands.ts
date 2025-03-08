@@ -37,3 +37,14 @@ Cypress.Commands.add("userAuth", (username, password, serviceId) => {
     },
   });
 });
+
+Cypress.Commands.add("getUserInfo", (userId, authToken) => {
+  cy.request({
+    method: "GET",
+    url: `/user/info/${userId}`,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+    failOnStatusCode: false,
+  });
+});
