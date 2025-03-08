@@ -2,7 +2,7 @@
  * The main application instance imported from the server module.
  * @type {Object}
  */
-const app = require("./src/server");
+const app = require("./cypress/fixtures/mocks/server");
 
 const PORT = 3000;
 app.listen(PORT, () => {
