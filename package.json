@@ -28,9 +28,9 @@
     "start:mock": "node mock-server.js"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.6.0",
+    "cors": "^2.8.5",
     "cypress": "^14.1.0",
-    "typescript": "^5.8.2",
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "express": "^4.18.2"
   }
 }
