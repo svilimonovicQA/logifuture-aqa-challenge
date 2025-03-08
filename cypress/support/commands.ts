@@ -23,3 +23,17 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+Cypress.Commands.add("userAuth", (username, password, serviceId) => {
+  cy.request({
+    method: "POST",
+    url: "/user/login",
+    headers: {
+      "X-Service-Id": serviceId,
+    },
+    failOnStatusCode: false,
+    body: {
+      username: username,
+      password: password,
+    },
+  });
+});
