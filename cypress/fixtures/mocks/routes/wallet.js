@@ -93,6 +93,116 @@ router.get("/:walletId", (request, response) => {
   response.json(wallet);
 });
 
+// Helper function to generate a transaction
+const generateTransaction = (createdAt = faker.date.recent().toISOString()) => {
+  const status = faker.helpers.arrayElement(["pending", "finished"]);
+  const transaction = {
+    transactionId: faker.string.uuid(),
+    currency: faker.helpers.arrayElement(["EUR", "USD", "GBP"]),
+    amount: parseFloat(faker.finance.amount(1, 10000, 2)),
+    type: faker.helpers.arrayElement(["credit", "debit"]),
+    status,
+    createdAt,
+  };
+
+  if (status === "finished") {
+    transaction.outcome = faker.helpers.arrayElement(["approved", "denied"]);
+    transaction.updatedAt = faker.date
+      .between({
+        from: transaction.createdAt,
+        to: new Date(),
+      })
+      .toISOString();
+  }
+
+  return transaction;
+};
+
+// GET /wallet/{walletId}/transaction/{transactionId}
+router.get("/:walletId/transaction/:transactionId", (request, response) => {
+  const { walletId, transactionId } = request.params;
+
+  // Validate walletId format
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(walletId)) {
+    return response.status(400).json({
+      error: "Invalid wallet ID format",
+    });
+  }
+
+  // Validate transactionId format (using same UUID format)
+  if (!uuidRegex.test(transactionId)) {
+    return response.status(400).json({
+      error: "Invalid transaction ID format",
+    });
+  }
+
+  // Generate mock transaction response using the helper function
+  const transaction = generateTransaction();
+  // Override the generated transactionId with the one from the request
+  transaction.transactionId = transactionId;
+
+  response.json(transaction);
+});
+
+// GET /wallet/{walletId}/transactions
+router.get("/:walletId/transactions", (request, response) => {
+  const { walletId } = request.params;
+  const { page = 1, startDate, endDate } = request.query;
+
+  // Validate walletId format
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(walletId)) {
+    return response.status(400).json({
+      error: "Invalid wallet ID format",
+    });
+  }
+
+  // Generate a random total number of transactions
+  const totalCount = faker.number.int({ min: 10, max: 100 });
+  const pageSize = 10;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const currentPage = Math.min(parseInt(page), totalPages);
+
+  // Generate transactions for the current page
+  let transactions = Array.from({ length: pageSize }, () => {
+    // Generate a date within the specified range or recent if no range
+    let createdAt;
+    if (startDate && endDate) {
+      createdAt = faker.date
+        .between({
+          from: new Date(startDate),
+          to: new Date(endDate),
+        })
+        .toISOString();
+    } else {
+      createdAt = faker.date.recent().toISOString();
+    }
+    return generateTransaction(createdAt);
+  });
+
+  // Sort transactions by createdAt in descending order
+  transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  // Filter transactions by date range if provided
+  if (startDate && endDate) {
+    transactions = transactions.filter(
+      (t) =>
+        new Date(t.createdAt) >= new Date(startDate) &&
+        new Date(t.createdAt) <= new Date(endDate)
+    );
+  }
+
+  response.json({
+    transactions,
+    totalCount,
+    currentPage,
+    totalPages,
+  });
+});
+
 // POST /wallet/{walletId}/transaction
 router.post("/:walletId/transaction", (request, response) => {
   const { walletId } = request.params;
@@ -114,19 +224,10 @@ router.post("/:walletId/transaction", (request, response) => {
     });
   }
 
-  const { amount, currency } = request.body;
+  const { amount, currency, type } = request.body;
 
-  // Generate mock transaction response
-  const transaction = {
-    transactionId: faker.string.uuid(),
-    walletId,
-    amount,
-    currency,
-    timestamp: new Date().toISOString(),
-    status: faker.helpers.arrayElement(["completed", "pending", "failed"]),
-    type: faker.helpers.arrayElement(["credit", "debit"]),
-    balance: parseFloat(faker.finance.amount(Math.abs(amount), 10000, 2)),
-  };
+  // Generate mock transaction response using the helper function
+  const transaction = generateTransaction();
 
   response.status(201).json(transaction);
 });
