@@ -48,3 +48,14 @@ Cypress.Commands.add("getUserInfo", (userId, authToken) => {
     failOnStatusCode: false,
   });
 });
+
+Cypress.Commands.add("getWallet", (walletId, authToken) => {
+  cy.request({
+    method: "GET",
+    url: `/wallet/${walletId}`,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+    failOnStatusCode: false,
+  });
+});

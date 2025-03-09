@@ -19,9 +19,17 @@ declare global {
        * Get User Information
        * @param {string} userId - The ID of the user to get information for.
        * @param {string} authToken - The authentication token to use for the request.
-       * @example cy.getUserInfo("userId", "authToken", "serviceId");
+       * @example cy.getUserInfo("userId", "authToken");
        */
       getUserInfo(userId: string, authToken: string): Chainable;
+
+      /**
+       * Get Wallet Information
+       * @param {string} walletId - The ID of the wallet to get information for.
+       * @param {string} authToken - The authentication token to use for the request.
+       * @example cy.getWallet("walletId", "authToken");
+       */
+      getWallet(walletId: string, authToken: string): Chainable;
     }
   }
 }

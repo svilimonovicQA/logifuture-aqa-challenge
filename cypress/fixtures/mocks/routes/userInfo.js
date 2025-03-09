@@ -29,7 +29,7 @@ router.get("/:userId", (request, response) => {
   // Generate and return user info with standard response format
   response.status(200).json({
     status: "success",
-    data: {
+    wallet: {
       walletId: faker.string.uuid(),
       name: NAME,
       locale: "en-US",
