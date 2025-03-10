@@ -1,13 +1,16 @@
+import { user } from "../../fixtures/mocks/data/user";
 describe("User Info API tests", () => {
   let authToken: string;
   let userId: string;
 
   beforeEach(() => {
     // Login to get the auth token and userId
-    cy.userAuth("testUser", "testPass", "serviceID").then((response) => {
-      authToken = response.body.data.token;
-      userId = response.body.data.userId;
-    });
+    cy.userAuth(user.username, user.password, user.serviceId).then(
+      (response) => {
+        authToken = response.body.data.token;
+        userId = response.body.data.userId;
+      }
+    );
   });
 
   it("user should have only one wallet", () => {
