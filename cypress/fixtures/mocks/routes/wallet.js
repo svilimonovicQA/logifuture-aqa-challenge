@@ -283,22 +283,42 @@ router.post("/:walletId/transaction", (request, response) => {
   }
 
   const { amount, currency, type } = request.body;
-  const shouldDelay = amount > LARGE_TRANSACTION_THRESHOLD;
-  const status = shouldDelay ? "pending" : "finished";
+  let status = "finished";
+  let outcome = "approved";
   const createdAt = new Date().toISOString();
 
-  const transaction = generateTransaction({
-    shouldDelay,
-    override: {
-      currency,
-      amount,
-      type,
-      status,
-      createdAt,
-      outcome: "approved",
-      updatedAt: status === "finished" ? createdAt : undefined,
-    },
-  });
+  if (type === "credit") {
+    if (amount > 1000) {
+      status = "pending";
+      outcome = "approved";
+    } else if (amount >= 100 && amount <= 1000) {
+      status = "finished";
+      outcome = "approved";
+    } else {
+      status = "finished";
+      outcome = faker.helpers.arrayElement(TRANSACTION_OUTCOMES);
+    }
+  } else {
+    // For debit transactions, use original large transaction threshold logic
+    const shouldDelay = amount > LARGE_TRANSACTION_THRESHOLD;
+    status = shouldDelay ? "pending" : "finished";
+    outcome =
+      status === "finished"
+        ? faker.helpers.arrayElement(TRANSACTION_OUTCOMES)
+        : undefined;
+  }
+
+  // Create transaction directly instead of using generateTransaction to preserve our outcome
+  const transaction = {
+    transactionId: faker.string.uuid(),
+    currency,
+    amount,
+    type,
+    status,
+    createdAt,
+    outcome,
+    ...(status === "finished" ? { updatedAt: createdAt } : {}),
+  };
 
   if (status === "finished") {
     updateWalletBalance(walletId, currency, amount, type);

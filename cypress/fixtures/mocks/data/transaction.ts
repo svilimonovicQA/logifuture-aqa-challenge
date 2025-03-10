@@ -29,6 +29,6 @@ interface Transaction {
  */
 export const transaction: Transaction = {
   currency: "EUR",
-  amount: 100.5,
+  amount: 500,
   type: "credit",
 };
