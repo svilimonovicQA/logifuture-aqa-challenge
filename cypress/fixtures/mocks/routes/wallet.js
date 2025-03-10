@@ -16,7 +16,7 @@ const { faker } = require("@faker-js/faker");
 const validateTransactionBody = (body) => {
   const { amount, currency } = body;
 
-  if (!amount || typeof amount !== "number") {
+  if (typeof amount !== "number") {
     return { isValid: false, error: "Amount must be a number" };
   }
 
@@ -31,34 +31,43 @@ const validateTransactionBody = (body) => {
   return { isValid: true };
 };
 
+// Store for maintaining wallet balances
+const walletBalances = new Map();
+
 // Helper function to generate a currency clip
-const generateCurrencyClip = (currency) => {
+const generateCurrencyClip = (currency, walletId) => {
+  const key = `${walletId}-${currency}`;
+  if (!walletBalances.has(key)) {
+    walletBalances.set(key, 0); // Initialize with 0 balance
+  }
+
   return {
     currency,
-    balance: parseFloat(faker.finance.amount(0, 10000, 4)),
+    balance: walletBalances.get(key),
     lastTransaction: faker.date.recent().toISOString(),
     transactionCount: faker.number.int({ min: 1, max: 100 }),
   };
+};
+
+// Helper function to update wallet balance
+const updateWalletBalance = (walletId, currency, amount, type) => {
+  const key = `${walletId}-${currency}`;
+  const currentBalance = walletBalances.get(key) || 0;
+  const newBalance =
+    type === "credit" ? currentBalance + amount : currentBalance - amount;
+  walletBalances.set(key, newBalance);
 };
 
 // Helper function to generate an array of currency clips
 /**
  * Generates an array of currency clips.
  *
- * This function randomly selects a number of currencies from a predefined list
- * and generates a currency clip for each selected currency.
- *
+ * @param {string} walletId - The ID of the wallet
  * @returns {Array} An array of currency clips.
  */
-const generateCurrencyClips = () => {
+const generateCurrencyClips = (walletId) => {
   const currencies = ["EUR", "USD", "GBP"];
-  const numberOfClips = faker.number.int({ min: 0, max: currencies.length });
-  const selectedCurrencies = faker.helpers.arrayElements(
-    currencies,
-    numberOfClips
-  );
-
-  return selectedCurrencies.map((currency) => generateCurrencyClip(currency));
+  return currencies.map((currency) => generateCurrencyClip(currency, walletId));
 };
 
 // GET /wallet/{walletId}
@@ -85,7 +94,7 @@ router.get("/:walletId", (request, response) => {
 
   const wallet = {
     walletId,
-    currencyClips: generateCurrencyClips(),
+    currencyClips: generateCurrencyClips(walletId),
     createdAt,
     updatedAt,
   };
@@ -94,8 +103,12 @@ router.get("/:walletId", (request, response) => {
 });
 
 // Helper function to generate a transaction
-const generateTransaction = (createdAt = faker.date.recent().toISOString()) => {
-  const status = faker.helpers.arrayElement(["pending", "finished"]);
+const generateTransaction = (
+  createdAt = faker.date.recent().toISOString(),
+  shouldDelay = false
+) => {
+  // If shouldDelay is true, simulate a delayed response (> 1 second)
+  const status = shouldDelay ? "pending" : "finished";
   const transaction = {
     transactionId: faker.string.uuid(),
     currency: faker.helpers.arrayElement(["EUR", "USD", "GBP"]),
@@ -226,8 +239,29 @@ router.post("/:walletId/transaction", (request, response) => {
 
   const { amount, currency, type } = request.body;
 
-  // Generate mock transaction response using the helper function
-  const transaction = generateTransaction();
+  // Simulate a delayed response (> 1 second) for large amounts
+  const shouldDelay = amount > 1000; // Example threshold for demonstration
+
+  // Update wallet balance for finished transactions
+  const status = shouldDelay ? "pending" : "finished";
+  const outcome = "approved";
+
+  // Create transaction response using request body
+  const transaction = {
+    transactionId: faker.string.uuid(),
+    currency,
+    amount,
+    type,
+    status,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (status === "finished") {
+    transaction.outcome = outcome;
+    transaction.updatedAt = transaction.createdAt;
+    // Update balance only for finished transactions
+    updateWalletBalance(walletId, currency, amount, type);
+  }
 
   response.status(201).json(transaction);
 });

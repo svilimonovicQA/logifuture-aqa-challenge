@@ -22,22 +22,20 @@ describe("Login API tests", () => {
       );
     });
   });
-  it("should return 400 when username is missing", () => {
-    cy.userAuth("", "testPass", "serviceID").then((response) => {
-      expect(response.status).to.eq(400);
-      expect(response.body).to.have.property(
-        "error",
-        "Username and password are required"
-      );
-    });
-  });
-  it("should return 400 when password is missing", () => {
-    cy.userAuth("testUser", "", "serviceID").then((response) => {
-      expect(response.status).to.eq(400);
-      expect(response.body).to.have.property(
-        "error",
-        "Username and password are required"
-      );
+  it("should return 400 when credentials are missing", () => {
+    const testCases = [
+      { username: "", password: "testPass", description: "missing username" },
+      { username: "testUser", password: "", description: "missing password" },
+    ];
+
+    testCases.forEach(({ username, password, description }) => {
+      cy.userAuth(username, password, "serviceID").then((response) => {
+        expect(response.status, `should fail when ${description}`).to.eq(400);
+        expect(response.body).to.have.property(
+          "error",
+          "Username and password are required"
+        );
+      });
     });
   });
 });
