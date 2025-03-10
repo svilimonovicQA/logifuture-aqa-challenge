@@ -2,19 +2,43 @@ const express = require("express");
 const router = express.Router();
 const { faker } = require("@faker-js/faker");
 
-// Helper function to validate transaction request body
 /**
- * Validates the transaction body to ensure it has a valid amount and currency.
+ * Wallet Service Mock
  *
- * @param {Object} body - The transaction body to validate.
- * @param {number} body.amount - The amount of the transaction.
- * @param {string} body.currency - The currency of the transaction. Must be one of: EUR, USD, GBP.
- * @returns {Object} An object containing the validation result.
- * @returns {boolean} returns.isValid - Indicates if the transaction body is valid.
- * @returns {string} [returns.error] - The error message if the transaction body is invalid.
+ * This module provides mock endpoints for wallet operations including:
+ * - Wallet information retrieval
+ * - Transaction creation and management
+ * - Balance tracking across multiple currencies
+ */
+
+// Constants
+const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP"];
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TRANSACTION_TYPES = ["credit", "debit"];
+const TRANSACTION_STATUSES = ["pending", "finished"];
+const TRANSACTION_OUTCOMES = ["approved", "denied"];
+const LARGE_TRANSACTION_THRESHOLD = 1000;
+
+/**
+ * Validates a UUID string
+ *
+ * @param {string} uuid - The UUID to validate
+ * @returns {boolean} Whether the UUID is valid
+ */
+const isValidUUID = (uuid) => UUID_REGEX.test(uuid);
+
+/**
+ * Validates the transaction request body
+ *
+ * @param {Object} body - The transaction body to validate
+ * @param {number} body.amount - The transaction amount
+ * @param {string} body.currency - The transaction currency
+ * @param {string} body.type - The transaction type (credit/debit)
+ * @returns {Object} Validation result with isValid flag and optional error message
  */
 const validateTransactionBody = (body) => {
-  const { amount, currency } = body;
+  const { amount, currency, type } = body;
 
   if (typeof amount !== "number") {
     return { isValid: false, error: "Amount must be a number" };
@@ -24,21 +48,37 @@ const validateTransactionBody = (body) => {
     return { isValid: false, error: "Amount must be greater than 0" };
   }
 
-  if (!currency || !["EUR", "USD", "GBP"].includes(currency)) {
-    return { isValid: false, error: "Currency must be one of: EUR, USD, GBP" };
+  if (!currency || !SUPPORTED_CURRENCIES.includes(currency)) {
+    return {
+      isValid: false,
+      error: `Currency must be one of: ${SUPPORTED_CURRENCIES.join(", ")}`,
+    };
+  }
+
+  if (!type || !TRANSACTION_TYPES.includes(type)) {
+    return {
+      isValid: false,
+      error: `Transaction type must be one of: ${TRANSACTION_TYPES.join(", ")}`,
+    };
   }
 
   return { isValid: true };
 };
 
-// Store for maintaining wallet balances
+// Wallet balance management
 const walletBalances = new Map();
 
-// Helper function to generate a currency clip
+/**
+ * Generates or retrieves a currency clip for a wallet
+ *
+ * @param {string} currency - The currency code
+ * @param {string} walletId - The wallet identifier
+ * @returns {Object} Currency clip with balance and transaction info
+ */
 const generateCurrencyClip = (currency, walletId) => {
   const key = `${walletId}-${currency}`;
   if (!walletBalances.has(key)) {
-    walletBalances.set(key, 0); // Initialize with 0 balance
+    walletBalances.set(key, 0);
   }
 
   return {
@@ -49,7 +89,14 @@ const generateCurrencyClip = (currency, walletId) => {
   };
 };
 
-// Helper function to update wallet balance
+/**
+ * Updates a wallet's balance for a given currency
+ *
+ * @param {string} walletId - The wallet identifier
+ * @param {string} currency - The currency code
+ * @param {number} amount - The transaction amount
+ * @param {string} type - The transaction type (credit/debit)
+ */
 const updateWalletBalance = (walletId, currency, amount, type) => {
   const key = `${walletId}-${currency}`;
   const currentBalance = walletBalances.get(key) || 0;
@@ -58,68 +105,44 @@ const updateWalletBalance = (walletId, currency, amount, type) => {
   walletBalances.set(key, newBalance);
 };
 
-// Helper function to generate an array of currency clips
 /**
- * Generates an array of currency clips.
+ * Generates currency clips for all supported currencies
  *
- * @param {string} walletId - The ID of the wallet
- * @returns {Array} An array of currency clips.
+ * @param {string} walletId - The wallet identifier
+ * @returns {Array<Object>} Array of currency clips
  */
-const generateCurrencyClips = (walletId) => {
-  const currencies = ["EUR", "USD", "GBP"];
-  return currencies.map((currency) => generateCurrencyClip(currency, walletId));
-};
+const generateCurrencyClips = (walletId) =>
+  SUPPORTED_CURRENCIES.map((currency) =>
+    generateCurrencyClip(currency, walletId)
+  );
 
-// GET /wallet/{walletId}
-router.get("/:walletId", (request, response) => {
-  const { walletId } = request.params;
-
-  // Validate walletId format (basic UUID validation)
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(walletId)) {
-    return response.status(400).json({
-      error: "Invalid wallet ID format",
-    });
-  }
-
-  // Generate mock wallet data
-  const createdAt = faker.date.past().toISOString();
-  const updatedAt = faker.date
-    .between({
-      from: createdAt,
-      to: new Date(),
-    })
-    .toISOString();
-
-  const wallet = {
-    walletId,
-    currencyClips: generateCurrencyClips(walletId),
-    createdAt,
-    updatedAt,
-  };
-
-  response.json(wallet);
-});
-
-// Helper function to generate a transaction
-const generateTransaction = (
+/**
+ * Generates a transaction with specified parameters
+ *
+ * @param {Object} options - Transaction generation options
+ * @param {string} [options.createdAt] - Transaction creation timestamp
+ * @param {boolean} [options.shouldDelay] - Whether to mark as pending
+ * @param {Object} [options.override] - Properties to override in generated transaction
+ * @returns {Object} Generated transaction object
+ */
+const generateTransaction = ({
   createdAt = faker.date.recent().toISOString(),
-  shouldDelay = false
-) => {
-  // If shouldDelay is true, simulate a delayed response (> 1 second)
+  shouldDelay = false,
+  override = {},
+} = {}) => {
   const status = shouldDelay ? "pending" : "finished";
   const transaction = {
     transactionId: faker.string.uuid(),
-    currency: faker.helpers.arrayElement(["EUR", "USD", "GBP"]),
+    currency: faker.helpers.arrayElement(SUPPORTED_CURRENCIES),
     amount: parseFloat(faker.finance.amount(1, 10000, 2)),
-    type: faker.helpers.arrayElement(["credit", "debit"]),
+    type: faker.helpers.arrayElement(TRANSACTION_TYPES),
     status,
     createdAt,
+    ...override,
   };
 
   if (status === "finished") {
-    transaction.outcome = faker.helpers.arrayElement(["approved", "denied"]);
+    transaction.outcome = faker.helpers.arrayElement(TRANSACTION_OUTCOMES);
     transaction.updatedAt = faker.date
       .between({
         from: transaction.createdAt,
@@ -131,75 +154,98 @@ const generateTransaction = (
   return transaction;
 };
 
-// GET /wallet/{walletId}/transaction/{transactionId}
-router.get("/:walletId/transaction/:transactionId", (request, response) => {
-  const { walletId, transactionId } = request.params;
+// Route Handlers
 
-  // Validate walletId format
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(walletId)) {
+/**
+ * GET /wallet/{walletId}
+ * Retrieves wallet information including currency clips
+ */
+router.get("/:walletId", (request, response) => {
+  const { walletId } = request.params;
+
+  if (!isValidUUID(walletId)) {
     return response.status(400).json({
       error: "Invalid wallet ID format",
     });
   }
 
-  // Validate transactionId format (using same UUID format)
-  if (!uuidRegex.test(transactionId)) {
+  const createdAt = faker.date.past().toISOString();
+  const updatedAt = faker.date
+    .between({
+      from: createdAt,
+      to: new Date(),
+    })
+    .toISOString();
+
+  response.json({
+    walletId,
+    currencyClips: generateCurrencyClips(walletId),
+    createdAt,
+    updatedAt,
+  });
+});
+
+/**
+ * GET /wallet/{walletId}/transaction/{transactionId}
+ * Retrieves information about a specific transaction
+ */
+router.get("/:walletId/transaction/:transactionId", (request, response) => {
+  const { walletId, transactionId } = request.params;
+
+  if (!isValidUUID(walletId)) {
+    return response.status(400).json({
+      error: "Invalid wallet ID format",
+    });
+  }
+
+  if (!isValidUUID(transactionId)) {
     return response.status(400).json({
       error: "Invalid transaction ID format",
     });
   }
 
-  // Generate mock transaction response using the helper function
-  const transaction = generateTransaction();
-  // Override the generated transactionId with the one from the request
-  transaction.transactionId = transactionId;
+  const transaction = generateTransaction({
+    override: { transactionId },
+  });
 
   response.json(transaction);
 });
 
-// GET /wallet/{walletId}/transactions
+/**
+ * GET /wallet/{walletId}/transactions
+ * Retrieves paginated transaction history with optional date filtering
+ */
 router.get("/:walletId/transactions", (request, response) => {
   const { walletId } = request.params;
   const { page = 1, startDate, endDate } = request.query;
 
-  // Validate walletId format
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(walletId)) {
+  if (!isValidUUID(walletId)) {
     return response.status(400).json({
       error: "Invalid wallet ID format",
     });
   }
 
-  // Generate a random total number of transactions
   const totalCount = faker.number.int({ min: 10, max: 100 });
   const pageSize = 10;
   const totalPages = Math.ceil(totalCount / pageSize);
   const currentPage = Math.min(parseInt(page), totalPages);
 
-  // Generate transactions for the current page
   let transactions = Array.from({ length: pageSize }, () => {
-    // Generate a date within the specified range or recent if no range
-    let createdAt;
-    if (startDate && endDate) {
-      createdAt = faker.date
-        .between({
-          from: new Date(startDate),
-          to: new Date(endDate),
-        })
-        .toISOString();
-    } else {
-      createdAt = faker.date.recent().toISOString();
-    }
-    return generateTransaction(createdAt);
+    const createdAt =
+      startDate && endDate
+        ? faker.date
+            .between({
+              from: new Date(startDate),
+              to: new Date(endDate),
+            })
+            .toISOString()
+        : faker.date.recent().toISOString();
+
+    return generateTransaction({ createdAt });
   });
 
-  // Sort transactions by createdAt in descending order
   transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // Filter transactions by date range if provided
   if (startDate && endDate) {
     transactions = transactions.filter(
       (t) =>
@@ -216,20 +262,19 @@ router.get("/:walletId/transactions", (request, response) => {
   });
 });
 
-// POST /wallet/{walletId}/transaction
+/**
+ * POST /wallet/{walletId}/transaction
+ * Creates a new transaction and updates wallet balance
+ */
 router.post("/:walletId/transaction", (request, response) => {
   const { walletId } = request.params;
 
-  // Validate walletId format
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(walletId)) {
+  if (!isValidUUID(walletId)) {
     return response.status(400).json({
       error: "Invalid wallet ID format",
     });
   }
 
-  // Validate request body
   const validation = validateTransactionBody(request.body);
   if (!validation.isValid) {
     return response.status(400).json({
@@ -238,28 +283,24 @@ router.post("/:walletId/transaction", (request, response) => {
   }
 
   const { amount, currency, type } = request.body;
-
-  // Simulate a delayed response (> 1 second) for large amounts
-  const shouldDelay = amount > 1000; // Example threshold for demonstration
-
-  // Update wallet balance for finished transactions
+  const shouldDelay = amount > LARGE_TRANSACTION_THRESHOLD;
   const status = shouldDelay ? "pending" : "finished";
-  const outcome = "approved";
+  const createdAt = new Date().toISOString();
 
-  // Create transaction response using request body
-  const transaction = {
-    transactionId: faker.string.uuid(),
-    currency,
-    amount,
-    type,
-    status,
-    createdAt: new Date().toISOString(),
-  };
+  const transaction = generateTransaction({
+    shouldDelay,
+    override: {
+      currency,
+      amount,
+      type,
+      status,
+      createdAt,
+      outcome: "approved",
+      updatedAt: status === "finished" ? createdAt : undefined,
+    },
+  });
 
   if (status === "finished") {
-    transaction.outcome = outcome;
-    transaction.updatedAt = transaction.createdAt;
-    // Update balance only for finished transactions
     updateWalletBalance(walletId, currency, amount, type);
   }
 

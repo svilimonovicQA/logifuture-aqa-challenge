@@ -85,3 +85,5 @@ router.post("/login", (request, response) => {
     data: generateAuthData(),
   });
 });
+
+module.exports = router;
