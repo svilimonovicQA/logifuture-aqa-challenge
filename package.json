@@ -24,7 +24,7 @@
   "main": "index.js",
   "scripts": {
     "test": "cypress run",
-    "cypress:open": "npx cypress open",
+    "cypress:open": "cypress open",
     "start:mock": "node mock-server.js"
   },
   "devDependencies": {

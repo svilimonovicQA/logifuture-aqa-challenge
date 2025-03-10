@@ -1,10 +1,27 @@
+/**
+ * Wallet API Integration Tests
+ *
+ * This test suite verifies the functionality of the Wallet API endpoints including:
+ * - Wallet information retrieval
+ * - Transaction processing
+ * - Balance management
+ * - Input validation
+ */
+
 import { user } from "../../fixtures/mocks/data/user";
 import { transaction } from "../../fixtures/mocks/data/transaction";
-describe("Wallet API tests", () => {
-  let authToken: string;
-  let walletId: string;
-  let userId: string;
 
+describe("Wallet API tests", () => {
+  // Test suite variables
+  let authToken: string; // Authentication token for API requests
+  let walletId: string; // Wallet identifier
+  let userId: string; // User identifier
+
+  /**
+   * Before each test:
+   * 1. Authenticate user to get auth token
+   * 2. Retrieve user info to get wallet ID
+   */
   beforeEach(() => {
     // Login to get the auth token
     cy.userAuth(user.username, user.password, user.serviceId).then(
@@ -20,6 +37,13 @@ describe("Wallet API tests", () => {
     );
   });
 
+  /**
+   * Test: GET /wallet/:walletId
+   * Verifies that wallet information is correctly returned, including:
+   * - Wallet ID
+   * - Currency clips array
+   * - Currency clip properties (currency, balance, etc.)
+   */
   it("should return wallet information when making a GET request to /wallet/:walletId", () => {
     cy.getWallet(walletId, authToken).then((response) => {
       // Verify response status
@@ -43,6 +67,14 @@ describe("Wallet API tests", () => {
       }
     });
   });
+
+  /**
+   * Test: POST /wallet/:walletId/transaction (Credit)
+   * Verifies that credit transactions within threshold are:
+   * - Processed with status "finished"
+   * - Given outcome "approved"
+   * - Returned with status code 201
+   */
   it("should process a credit transaction with immediate approval", () => {
     cy.postTransaction(walletId, transaction, authToken).then((response) => {
       expect(response.status).to.eq(201);
@@ -51,6 +83,13 @@ describe("Wallet API tests", () => {
     });
   });
 
+  /**
+   * Test: POST /wallet/:walletId/transaction (Pending)
+   * Verifies handling of transactions that exceed threshold:
+   * - Initial status should be "pending"
+   * - Transaction should be retrievable
+   * - Final status should be either "pending" or "finished"
+   */
   it("should handle pending transactions correctly", () => {
     transaction.currency = "USD";
     transaction.amount = 1500; // Amount > 1000 to trigger pending status
@@ -73,6 +112,14 @@ describe("Wallet API tests", () => {
     });
   });
 
+  /**
+   * Test: POST /wallet/:walletId/transaction (Validation)
+   * Verifies request body validation for:
+   * - Invalid currency codes
+   * - Negative amounts
+   * - Zero amounts
+   * All should return 400 status with error message
+   */
   it("should validate transaction request body", () => {
     const invalidTransactions = [
       { currency: "INVALID", amount: 100, type: "credit" as "credit" },
@@ -88,6 +135,14 @@ describe("Wallet API tests", () => {
     });
   });
 
+  /**
+   * Test: Wallet Balance Update
+   * Verifies that successful transactions:
+   * - Update the wallet balance correctly
+   * - Reflect the new balance in subsequent wallet queries
+   * - Maintain transaction status as "finished"
+   * - Keep outcome as "approved"
+   */
   it("should update wallet balance after successful transaction", () => {
     const transaction: {
       currency: string;
