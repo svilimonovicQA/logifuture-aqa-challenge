@@ -1,3 +1,5 @@
+import { user } from "../../fixtures/mocks/data/user";
+import { transaction } from "../../fixtures/mocks/data/transaction";
 describe("Wallet API tests", () => {
   let authToken: string;
   let walletId: string;
@@ -5,15 +7,17 @@ describe("Wallet API tests", () => {
 
   beforeEach(() => {
     // Login to get the auth token
-    cy.userAuth("testUser", "testPass", "serviceID").then((response) => {
-      authToken = response.body.data.token;
-      userId = response.body.data.userId;
+    cy.userAuth(user.username, user.password, user.serviceId).then(
+      (response) => {
+        authToken = response.body.data.token;
+        userId = response.body.data.userId;
 
-      // Get user info to get the walletId
-      cy.getUserInfo(userId, authToken).then((userResponse) => {
-        walletId = userResponse.body.wallet.walletId;
-      });
-    });
+        // Get user info to get the walletId
+        cy.getUserInfo(userId, authToken).then((userResponse) => {
+          walletId = userResponse.body.wallet.walletId;
+        });
+      }
+    );
   });
 
   it("should return wallet information when making a GET request to /wallet/:walletId", () => {
@@ -40,16 +44,6 @@ describe("Wallet API tests", () => {
     });
   });
   it("should process a credit transaction with immediate approval", () => {
-    const transaction: {
-      currency: string;
-      amount: number;
-      type: "credit" | "debit";
-    } = {
-      currency: "EUR",
-      amount: 100.5,
-      type: "credit",
-    };
-
     cy.postTransaction(walletId, transaction, authToken).then((response) => {
       expect(response.status).to.eq(201);
       expect(response.body.status).to.eq("finished");
@@ -58,15 +52,9 @@ describe("Wallet API tests", () => {
   });
 
   it("should handle pending transactions correctly", () => {
-    const transaction: {
-      currency: string;
-      amount: number;
-      type: "credit" | "debit";
-    } = {
-      currency: "USD",
-      amount: 1500, // Amount > 1000 to trigger pending status
-      type: "debit",
-    };
+    transaction.currency = "USD";
+    transaction.amount = 1500; // Amount > 1000 to trigger pending status
+    transaction.type = "debit";
 
     cy.postTransaction(walletId, transaction, authToken).then((response) => {
       expect(response.status).to.eq(201);
