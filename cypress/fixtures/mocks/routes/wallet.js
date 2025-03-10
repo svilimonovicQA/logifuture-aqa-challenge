@@ -94,8 +94,12 @@ router.get("/:walletId", (request, response) => {
 });
 
 // Helper function to generate a transaction
-const generateTransaction = (createdAt = faker.date.recent().toISOString()) => {
-  const status = faker.helpers.arrayElement(["pending", "finished"]);
+const generateTransaction = (
+  createdAt = faker.date.recent().toISOString(),
+  shouldDelay = false
+) => {
+  // If shouldDelay is true, simulate a delayed response (> 1 second)
+  const status = shouldDelay ? "pending" : "finished";
   const transaction = {
     transactionId: faker.string.uuid(),
     currency: faker.helpers.arrayElement(["EUR", "USD", "GBP"]),
@@ -226,8 +230,23 @@ router.post("/:walletId/transaction", (request, response) => {
 
   const { amount, currency, type } = request.body;
 
-  // Generate mock transaction response using the helper function
-  const transaction = generateTransaction();
+  // Simulate a delayed response (> 1 second) for large amounts
+  const shouldDelay = amount > 1000; // Example threshold for demonstration
+
+  // Create transaction response using request body
+  const transaction = {
+    transactionId: faker.string.uuid(),
+    currency,
+    amount,
+    type,
+    status: shouldDelay ? "pending" : "finished",
+    createdAt: new Date().toISOString(),
+  };
+
+  if (transaction.status === "finished") {
+    transaction.outcome = "approved";
+    transaction.updatedAt = transaction.createdAt;
+  }
 
   response.status(201).json(transaction);
 });

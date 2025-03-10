@@ -59,3 +59,38 @@ Cypress.Commands.add("getWallet", (walletId, authToken) => {
     failOnStatusCode: false,
   });
 });
+
+Cypress.Commands.add("postTransaction", (walletId, transaction, authToken) => {
+  cy.request({
+    method: "POST",
+    url: `/wallet/${walletId}/transaction`,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: transaction,
+    failOnStatusCode: false,
+  });
+});
+
+Cypress.Commands.add("getTransaction", (walletId, transactionId, authToken) => {
+  cy.request({
+    method: "GET",
+    url: `/wallet/${walletId}/transaction/${transactionId}`,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+    failOnStatusCode: false,
+  });
+});
+
+Cypress.Commands.add("getTransactions", (walletId, params, authToken) => {
+  cy.request({
+    method: "GET",
+    url: `/wallet/${walletId}/transactions`,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+    qs: params,
+    failOnStatusCode: false,
+  });
+});
