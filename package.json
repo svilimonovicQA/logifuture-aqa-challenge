@@ -23,7 +23,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "cypress:run": "cypress run",
+    "test": "cypress run",
     "cypress:open": "cypress open",
     "start:mock": "node mock-server.js"
   },
